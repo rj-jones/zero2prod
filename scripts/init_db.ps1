@@ -26,7 +26,7 @@ try {
     $Response = Invoke-Expression "docker run --name newsletter-db -e POSTGRES_USER=${DB_USER} -e POSTGRES_PASSWORD=${DB_PASSWORD} -e POSTGRES_DB=${DB_NAME} -p ${DB_PORT}:5432 -d postgres postgres -N 1000 2>&1"
 
     if ($Response -like "*is already in use*") {
-        throw "Docker container with name '${DB_NAME}' already exists."
+        Write-Host "Docker container with name '${DB_NAME}' already exists." -ForegroundColor Yellow
     }
 }
 catch {
@@ -52,8 +52,11 @@ do {
     break
 } while ($true)
 
-Write-Host "Postgres is up and running on port ${DB_PORT}!" -ForegroundColor Green
+Write-Host "Postgres is up and running on port ${DB_PORT}, running migrations..."
 
 $DATABASE_URL = "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 $env:DATABASE_URL = $DATABASE_URL
 sqlx database create
+sqlx migrate run
+
+Write-Host "Migrations completed" -ForegroundColor Green
