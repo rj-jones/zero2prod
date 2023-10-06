@@ -25,7 +25,8 @@ RUN cargo build --release --bin zero2prod
 
 
 ############### Runtime stage ###############
-FROM debian:bullseye-slim AS runtime
+# FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 ARG PROJECT_NAME=zero2prod
 
 WORKDIR /app
