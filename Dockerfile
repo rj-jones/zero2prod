@@ -2,26 +2,26 @@
 FROM rust:1.72.1 AS builder
 ARG PROJECT_NAME=zero2prod
 
-# Enforce sqlx offline mode
-ENV SQLX_OFFLINE true
+ENV SQLX_OFFLINE=true
+ENV RUST_BACKTRACE=1
 
-WORKDIR /app
+WORKDIR "/app"
 
 # Optional, update rustup to the latest version
 # rustup update stable
 
-# Install the build deps crate to allow caching of dependencies
-RUN cargo install --git https://github.com/rj-jones/build-deps-updated
-
-# Build the dependencies
-RUN cd /app && USER=root cargo new --bin $PROJECT_NAME
-WORKDIR /app/$PROJECT_NAME
-COPY Cargo.toml Cargo.lock ./
-RUN cargo-build-deps-updated --release
-COPY . /app/$PROJECT_NAME/
-
-# Build out application, leveraging the cached deps
-RUN cargo build --release --bin zero2prod
+RUN mkdir -p ./src
+RUN echo "fn main() {}" > ./src/dummy.rs
+RUN echo "" > ./src/dummy-lib.rs
+COPY Cargo.toml Cargo.lock .
+RUN sed -i 's#src/main.rs#src/dummy.rs#' Cargo.toml
+RUN sed -i 's#src/lib.rs#src/dummy-lib.rs#' Cargo.toml
+RUN cargo build --release
+RUN sed -i 's#src/dummy.rs#src/main.rs#' Cargo.toml
+RUN sed -i 's#src/dummy-lib.rs#src/lib.rs#' Cargo.toml
+COPY ./src ./src
+COPY sqlx-data.json ./
+RUN cargo build --release
 
 
 ############### Runtime stage ###############
@@ -43,7 +43,7 @@ RUN apt-get update -y \
 ENV APP_ENVIRONMENT production
 
 # Copy the compiled binary from the builder environment
-COPY --from=builder /app/$PROJECT_NAME/target/release/zero2prod zero2prod
+COPY --from=builder /app/target/release/zero2prod zero2prod
 
 # We need the configuration file at runtime
 COPY configuration configuration
